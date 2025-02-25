@@ -71,14 +71,14 @@ PF4) */
   }
 
 /* Private macro -------------------------------------------------------------*/
-#define WDT_TIMEOUT (60000)
-#define RESET_PERIOD (1000)
+#define WDT_TIMEOUT (300000)
+#define RESET_PERIOD (2000)
 
 #define INPUT_PORT GPIOD
 #define INPUT_PIN GPIO_PIN_6
 
-#define OUTPUT_PORT GPIOA
-#define OUTPUT_PIN GPIO_PIN_3
+#define OUTPUT_PORT GPIOB
+#define OUTPUT_PIN GPIO_PIN_5
 
 /* Private variables ---------------------------------------------------------*/
 volatile uint32_t time_keeper = 0;
@@ -92,6 +92,7 @@ uint32_t jsom_time_delta(uint32_t base_time, uint32_t now_time);
 void TIM2_Config(void);
 void enter_sleep_mode(void);
 void EXTI_Setup(void);
+void SwitchOn(void);
 
 /* Private functions ---------------------------------------------------------*/
 
@@ -112,12 +113,11 @@ void main(void)
   // GPIO_Init(GPIOC, GPIO_PIN_6, GPIO_MODE_IN_PU_NO_IT); // pin 8 // SWIM
 
   /* Initialize I/Os in Output Mode */
-  // GPIO_Init(OUTPUT_PORT, OUTPUT_PIN, GPIO_Mode_Out_OD_HiZ_Slow);
-  GPIO_Init(OUTPUT_PORT, OUTPUT_PIN, GPIO_MODE_OUT_PP_HIGH_SLOW); // pin 5
+  GPIO_Init(OUTPUT_PORT, OUTPUT_PIN, GPIO_MODE_OUT_OD_HIZ_SLOW); // pin 5
   GPIO_WriteHigh(OUTPUT_PORT, OUTPUT_PIN);
 
   /* Configure PD6 as input with pull-up and external interrupt */
-  GPIO_Init(INPUT_PORT, INPUT_PIN, GPIO_MODE_IN_PU_IT); // pin 1
+  GPIO_Init(INPUT_PORT, INPUT_PIN, GPIO_MODE_IN_FL_IT); // pin 1
 
   /* disable peripherals clocks to decrease consumption */
   CLK->PCKENR1 = 0x00;
@@ -132,6 +132,8 @@ void main(void)
 
   enableInterrupts();
 
+  SwitchOn();
+  
   /* Reset time */
   watchdog_time = tick_count;
 
@@ -144,12 +146,17 @@ void main(void)
     if (jsom_time_delta(watchdog_time, now) > WDT_TIMEOUT)
     {
       watchdog_time = now;
-      /* Toggle GPIOC PIN2 */
-      GPIO_WriteLow(OUTPUT_PORT, OUTPUT_PIN);
-      delay_ms(RESET_PERIOD);
-      GPIO_WriteHigh(OUTPUT_PORT, OUTPUT_PIN);
+      SwitchOn();
     }
   }
+}
+
+void SwitchOn(void)
+{
+  /* Toggle GPIOC PIN2 */
+  GPIO_WriteLow(OUTPUT_PORT, OUTPUT_PIN);
+  delay_ms(RESET_PERIOD);
+  GPIO_WriteHigh(OUTPUT_PORT, OUTPUT_PIN);
 }
 
 void EXTI_Setup(void)
