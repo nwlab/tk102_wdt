@@ -9,13 +9,14 @@ If no ping or events on the input pin does a reset on the output pin.
 
 MCU is STM8S001J3
 
-
-| Pin | STM8S001J3 | STM8L001J3M3 |
-|-----|------------|--------------|
-| GND |     2      |     3        |
-| VDD |     4      |     4        |
-| IN  |     1      |     1        |
-| OUT |     8      |     8        |
+| Pin  | STM8S001J3(€0,84) | STM8L001J3M3(€0.86) |
+|------|-------------------|---------------------|
+| GND  |     2             |     3               |
+| VDD  |     4             |     4               |
+| IN   |     1             |     5               |
+| OUT  |     5             |     8               |
+| SWIM |     8             |     1               |
+|      |     56,50 ₴       |     118,50 ₴        |
 
 STM8S device require an additional external capacitor for a voltage regulator connected through the VCAP pin (for example, 1uF or 2.2uF external cap).
 Connect between 2 and 3 pin.
