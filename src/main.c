@@ -38,6 +38,7 @@
 #ifdef _IAR_
 #define ASM asm
 #endif
+
 /* This delay should be added just after reset to have access to SWIM pin
 and to be able to reprogram the device after power on (otherwise the device
 will be locked) */
@@ -71,14 +72,14 @@ PF4) */
   }
 
 /* Private macro -------------------------------------------------------------*/
-#define WDT_TIMEOUT (300000)
+#define WDT_TIMEOUT  (300000)
 #define RESET_PERIOD (2000)
 
-#define INPUT_PORT GPIOD
-#define INPUT_PIN GPIO_PIN_6
+#define INPUT_PORT (GPIOD)
+#define INPUT_PIN  (GPIO_PIN_6)
 
-#define OUTPUT_PORT GPIOB
-#define OUTPUT_PIN GPIO_PIN_5
+#define OUTPUT_PORT (GPIOB)
+#define OUTPUT_PIN  (GPIO_PIN_5)
 
 /* Private variables ---------------------------------------------------------*/
 volatile uint32_t time_keeper = 0;
@@ -86,12 +87,12 @@ volatile uint32_t tick_count = 0;
 volatile uint32_t watchdog_time = 0;
 
 /* Private function prototypes -----------------------------------------------*/
-void delay_using_timer4_init(void);
+void delay_timer_init(void);
 void delay_ms(uint32_t time);
 uint32_t jsom_time_delta(uint32_t base_time, uint32_t now_time);
-void TIM2_Config(void);
+void periodic_timer_init(void);
 void enter_sleep_mode(void);
-void EXTI_Setup(void);
+void external_input_init(void);
 void SwitchOn(void);
 
 /* Private functions ---------------------------------------------------------*/
@@ -99,17 +100,17 @@ void SwitchOn(void);
 void main(void)
 {
   /* -------------STM8S001 startup-------------- */
-  /* configure unbonded pins */
+  /* Configure unbonded pins */
   CONFIG_UNUSED_PINS_STM8S001;
-  /* delay for SWIM connection: ~5seconds */
+  /* Delay for SWIM connection: ~5seconds */
   STARTUP_SWIM_DELAY_5S;
   /* ------------------------------------------- */
 
-  /* configure all STM8S001 pins as input with pull up */
-  GPIO_Init(GPIOA, GPIO_PIN_1, GPIO_MODE_IN_PU_NO_IT); // pin 1
-  GPIO_Init(GPIOA, GPIO_PIN_3, GPIO_MODE_IN_PU_NO_IT); // pin 5
+  /* Configure all STM8S001 pins as input with pull up */
+  GPIO_Init(GPIOA, GPIO_PIN_1, GPIO_MODE_IN_PU_NO_IT);     // pin 1
+  GPIO_Init(GPIOA, GPIO_PIN_3, GPIO_MODE_IN_PU_NO_IT);     // pin 5
   GPIO_Init(GPIOB, GPIO_PIN_4, GPIO_MODE_OUT_PP_LOW_FAST); // pin 6 (PB4 has no pull-up - configure it as output low)
-  GPIO_Init(GPIOC, GPIO_PIN_3, GPIO_MODE_IN_PU_NO_IT); // pin 7
+  GPIO_Init(GPIOC, GPIO_PIN_3, GPIO_MODE_IN_PU_NO_IT);     // pin 7
   // GPIO_Init(GPIOC, GPIO_PIN_6, GPIO_MODE_IN_PU_NO_IT); // pin 8 // SWIM
 
   /* Initialize I/Os in Output Mode */
@@ -124,16 +125,16 @@ void main(void)
   CLK->PCKENR2 = 0x00;
 
   /* TIM2 configuration ------------------------------------------------------*/
-  TIM2_Config(); // Configure TIM2 for 1-millisecond wake-up
+  periodic_timer_init(); // Configure TIM2 for 1-millisecond wake-up
   /* TIM4 configuration ------------------------------------------------------*/
-  delay_using_timer4_init();
+  delay_timer_init();
   /* Configure external interrupt */
-  EXTI_Setup();
-
+  external_input_init();
+  /* Enable interrupts */
   enableInterrupts();
-
+  /* Reset external device by power on */
   SwitchOn();
-  
+
   /* Reset time */
   watchdog_time = tick_count;
 
@@ -159,7 +160,7 @@ void SwitchOn(void)
   GPIO_WriteHigh(OUTPUT_PORT, OUTPUT_PIN);
 }
 
-void EXTI_Setup(void)
+void external_input_init(void)
 {
   disableInterrupts();
   EXTI_DeInit();
@@ -169,18 +170,16 @@ void EXTI_Setup(void)
 
 void extpin0_isr(void)
 {
-    /* Update watchdog flag */
-    watchdog_time = tick_count;
-    /* Testing */
-    // GPIO_WriteReverse(OUTPUT_PORT, OUTPUT_PIN);
+  /* Update watchdog flag */
+  watchdog_time = tick_count;
+  /* Testing */
+  // GPIO_WriteReverse(OUTPUT_PORT, OUTPUT_PIN);
 }
 
 /**
- * @brief  Configure TIM2 peripheral to generate an interrupt each 128?s
- * @param  None
- * @retval None
+ * @brief  Configure TIM2 peripheral to generate an interrupt each 1ms
  */
-void TIM2_Config(void)
+void periodic_timer_init(void)
 {
   /* Enable TIM2 CLK */
   CLK_PeripheralClockConfig(CLK_PERIPHERAL_TIMER2, ENABLE);
@@ -217,7 +216,10 @@ uint32_t jsom_time_delta(uint32_t base_time, uint32_t now_time)
   return delta;
 }
 
-void delay_using_timer4_init(void)
+/**
+ * @brief  Configure TIM4 peripheral to handle delays
+ */
+void delay_timer_init(void)
 {
   /* Enable TIM4 CLK */
   CLK_PeripheralClockConfig(CLK_PERIPHERAL_TIMER4, ENABLE);
@@ -233,11 +235,8 @@ void delay_using_timer4_init(void)
   TIM4_Cmd(DISABLE);
 }
 
-/* @Brief	: 	Timer 4 Interrupt Service Rountie for Delay function
- * @Para	:	None
- * @Return	:	None
- * @Note	:   User must be implement function delay_isr()
- * 				at INTERRUPT_HANDLER(TIM4_UPD_OVF_IRQHandler, 23) vector
+/**
+ * @brief	Timer 4 Interrupt Service Routine for Delay function
  */
 void delay_isr(void)
 {
@@ -257,10 +256,8 @@ void delay_isr(void)
   }
 }
 
-/* @Brief	: 	Delay function
- * @Para	:	Time to delay (millis seconds)
- * @Return	:	None
- * @Note	:   None
+/**
+ * @brief	: 	Delay function (millis seconds)
  */
 void delay_ms(uint32_t time)
 {
@@ -304,9 +301,5 @@ void assert_failed(uint8_t *file, uint32_t line)
   }
 }
 #endif
-
-/**
- * @}
- */
 
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/
